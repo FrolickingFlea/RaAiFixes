@@ -5805,6 +5805,37 @@ int HouseClass::AI_Building(void)
 			}
 		}
 
+		//auto-try radar to expand vehicles
+		current = BQuantity[STRUCT_RADAR];
+		if (current < 1 && (money > 1000 || hasincome)) {
+			b = &BuildingTypeClass::As_Reference(STRUCT_RADAR);
+			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
+				choiceptr = BuildChoice.Alloc();
+				if (choiceptr != NULL) {
+					*choiceptr = BuildChoiceClass(URGENCY_MEDIUM, b->Type);
+				}
+			}
+		}
+
+		/*
+		**	A helipad would be good.
+		*/
+		current = BQuantity[STRUCT_HELIPAD];
+		if (current < Round_Up(Rule.HelipadRatio*fixed(CurBuildings)) && current < (unsigned)Rule.HelipadLimit) {
+			b = &BuildingTypeClass::As_Reference(STRUCT_HELIPAD);
+			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
+				choiceptr = BuildChoice.Alloc();
+				if (choiceptr != NULL) {
+					int threat_quantity = 0;
+					if (enemy != NULL) {
+						threat_quantity = enemy->CurAircraft;
+					}
+
+					*choiceptr = BuildChoiceClass((CurAircraft < (unsigned)threat_quantity) ? URGENCY_HIGH : URGENCY_MEDIUM, b->Type);
+				}
+			}
+		}
+
 		/*
 		**	Always build up some base defense.
 		*/
@@ -5854,6 +5885,7 @@ int HouseClass::AI_Building(void)
 				threat_quantity = enemy->CurAircraft;
 			}
 			if (!airthreat) {
+				//check if anyone has planes/helis
 				for (HousesType house = HOUSE_FIRST; house < HOUSE_COUNT; house++) {
 					HouseClass * h = HouseClass::As_Pointer(house);
 					if (h != NULL && !Is_Ally(house) && h->AScan != 0) {
@@ -5894,15 +5926,31 @@ int HouseClass::AI_Building(void)
 		}
 
 		/*
-		**	Advanced base defense would be good.
+		**	an Advanced base defense would be good.
 		*/
 		current = BQuantity[STRUCT_TESLA];
-		if (current < Round_Up(Rule.TeslaRatio*fixed(CurBuildings)) && current < (unsigned)Rule.TeslaLimit) {
+		if (current < 1) {
 			b = &BuildingTypeClass::As_Reference(STRUCT_TESLA);
 			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome) && Power_Fraction() >= 1) {
 				choiceptr = BuildChoice.Alloc();
 				if (choiceptr != NULL) {
 					*choiceptr = BuildChoiceClass(URGENCY_MEDIUM, b->Type);
+				}
+			}
+		}
+
+		current = BQuantity[STRUCT_AIRSTRIP];
+		if (current < 1) {
+			b = &BuildingTypeClass::As_Reference(STRUCT_AIRSTRIP);
+			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
+				choiceptr = BuildChoice.Alloc();
+				if (choiceptr != NULL) {
+					int threat_quantity = 0;
+					if (enemy != NULL) {
+						threat_quantity = enemy->CurAircraft;
+					}
+
+					*choiceptr = BuildChoiceClass((CurAircraft < (unsigned)threat_quantity) ? URGENCY_HIGH : URGENCY_MEDIUM, b->Type);
 				}
 			}
 		}
@@ -5930,23 +5978,20 @@ int HouseClass::AI_Building(void)
 		}
 
 		/*
-		**	A helipad would be good.
+		**	more Advanced base defense would be good.
 		*/
-		current = BQuantity[STRUCT_HELIPAD];
-		if (current < Round_Up(Rule.HelipadRatio*fixed(CurBuildings)) && current < (unsigned)Rule.HelipadLimit) {
-			b = &BuildingTypeClass::As_Reference(STRUCT_HELIPAD);
-			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
+		current = BQuantity[STRUCT_TESLA];
+		if (current < Round_Up(Rule.TeslaRatio*fixed(CurBuildings)) && current < (unsigned)Rule.TeslaLimit) {
+			b = &BuildingTypeClass::As_Reference(STRUCT_TESLA);
+			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome) && Power_Fraction() >= 1) {
 				choiceptr = BuildChoice.Alloc();
 				if (choiceptr != NULL) {
-					int threat_quantity = 0;
-					if (enemy != NULL) {
-						threat_quantity = enemy->CurAircraft;
-					}
-
-					*choiceptr = BuildChoiceClass((CurAircraft < (unsigned)threat_quantity) ? URGENCY_HIGH : URGENCY_MEDIUM, b->Type);
+					*choiceptr = BuildChoiceClass(URGENCY_MEDIUM, b->Type);
 				}
 			}
 		}
+
+		
 
 		/*
 		**	An airstrip would be good.
@@ -5967,7 +6012,6 @@ int HouseClass::AI_Building(void)
 			}
 		}
 
-#ifdef OLD
 		/*
 		**	Build a repair bay if there isn't one already available.
 		*/
@@ -5981,7 +6025,6 @@ int HouseClass::AI_Building(void)
 				}
 			}
 		}
-#endif
 
 		/*
 		**	Pick the choice that is the most urgent.
