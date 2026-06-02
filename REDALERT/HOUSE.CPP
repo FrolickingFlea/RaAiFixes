@@ -6154,7 +6154,7 @@ int HouseClass::AI_Unit(void)
 	**	A computer controlled house will try to build a replacement
 	**	harvester if possible.
 	*/
-	if (IQ >= Rule.IQHarvester && !IsTiberiumShort && !IsHuman && BQuantity[STRUCT_REFINERY] * 2 > UQuantity[UNIT_HARVESTER] && Difficulty != DIFF_HARD) {
+	if (IQ >= Rule.IQHarvester && !IsTiberiumShort && !IsHuman && BQuantity[STRUCT_REFINERY] * 1.5 > UQuantity[UNIT_HARVESTER] && Difficulty != DIFF_HARD) {
 		if (UnitTypeClass::As_Reference(UNIT_HARVESTER).Level <= (unsigned)Control.TechLevel) {
 			BuildUnit = UNIT_HARVESTER;
 			return(TICKS_PER_SECOND);
@@ -6387,16 +6387,29 @@ int HouseClass::AI_Vessel(void)
 		int total = 0;
 		VesselType index;
 		for (index = VESSEL_FIRST; index < VESSEL_COUNT; index++) {
-
-			if (total > 0) {
-				int choice = Random_Pick(0, total - 1);
-				for (index = VESSEL_FIRST; index < VESSEL_COUNT; index++) {
-					if (choice < counter[index]) {
-						BuildVessel = index;
-						break;
-					}
-					choice -= counter[index];
+			VesselTypeClass const * utype = &VesselTypeClass::As_Reference(index);
+			if (Can_Build(utype, ActLike)) {
+				if (utype->PrimaryWeapon != NULL) {
+					counter[index] = 20;
 				}
+				else {
+					counter[index] = 1;
+				}
+			}
+			else {
+				counter[index] = 0;
+			}
+			total += counter[index];
+
+		}
+		if (total > 0) {
+			int choice = Random_Pick(0, total - 1);
+			for (index = VESSEL_FIRST; index < VESSEL_COUNT; index++) {
+				if (choice < counter[index]) {
+					BuildVessel = index;
+					break;
+				}
+				choice -= counter[index];
 			}
 		}
 	}
