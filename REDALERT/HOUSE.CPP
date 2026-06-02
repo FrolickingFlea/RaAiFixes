@@ -6037,10 +6037,12 @@ int HouseClass::AI_Building(void)
 
 
 		//check if someone has nukes
-		UrgencyType superPriority = URGENCY_LOW;
+		UrgencyType superPriority = URGENCY_MEDIUM;
+		UrgencyType techPriority = URGENCY_HIGH;
 		if (enemy != NULL && enemy->BQuantity[STRUCT_CHRONOSPHERE] + enemy->BQuantity[STRUCT_IRON_CURTAIN] + enemy->BQuantity[STRUCT_MSLO] > 0) {
-			//if superweapons detected, priority jumps to HIGH
-			superPriority = URGENCY_HIGH;
+			//if superweapons detected, priority jumps to CRITICAL
+			superPriority = URGENCY_CRITICAL;
+			techPriority = URGENCY_CRITICAL;
 		}
 
 		/*
@@ -6052,14 +6054,14 @@ int HouseClass::AI_Building(void)
 			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome) && Power_Fraction() >= 1) {
 				choiceptr = BuildChoice.Alloc();
 				if (choiceptr != NULL) {
-					*choiceptr = BuildChoiceClass(URGENCY_MEDIUM, b->Type);
+					*choiceptr = BuildChoiceClass(techPriority, b->Type);
 				}
 			} else {
 				b = &BuildingTypeClass::As_Reference(STRUCT_SOVIET_TECH);
 				if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome) && Power_Fraction() >= 1) {
 					choiceptr = BuildChoice.Alloc();
 					if (choiceptr != NULL) {
-						*choiceptr = BuildChoiceClass(URGENCY_MEDIUM, b->Type);
+						*choiceptr = BuildChoiceClass(techPriority, b->Type);
 					}
 				}
 			}
@@ -6152,7 +6154,7 @@ int HouseClass::AI_Unit(void)
 	**	A computer controlled house will try to build a replacement
 	**	harvester if possible.
 	*/
-	if (IQ >= Rule.IQHarvester && !IsTiberiumShort && !IsHuman && BQuantity[STRUCT_REFINERY] > UQuantity[UNIT_HARVESTER] && Difficulty != DIFF_HARD) {
+	if (IQ >= Rule.IQHarvester && !IsTiberiumShort && !IsHuman && BQuantity[STRUCT_REFINERY] * 2 > UQuantity[UNIT_HARVESTER] && Difficulty != DIFF_HARD) {
 		if (UnitTypeClass::As_Reference(UNIT_HARVESTER).Level <= (unsigned)Control.TechLevel) {
 			BuildUnit = UNIT_HARVESTER;
 			return(TICKS_PER_SECOND);
@@ -6283,6 +6285,7 @@ int HouseClass::AI_Vessel(void)
 		return(TICKS_PER_SECOND);
 	}
 
+	//campaign logic. multiplayer logic at bottom of method
 	if (Session.Type == GAME_NORMAL) {
 
 		int counter[VESSEL_COUNT];
@@ -6373,8 +6376,29 @@ int HouseClass::AI_Vessel(void)
 		}
 	}
 
+	//multiplayer logic
 	if (IsBaseBuilding) {
-		BuildVessel = VESSEL_NONE;
+		//
+		//quite an impressive implementation they had. shame to comment it out
+		//
+		//BuildVessel = VESSEL_NONE;
+
+		int counter[VESSEL_COUNT];
+		int total = 0;
+		VesselType index;
+		for (index = VESSEL_FIRST; index < VESSEL_COUNT; index++) {
+
+			if (total > 0) {
+				int choice = Random_Pick(0, total - 1);
+				for (index = VESSEL_FIRST; index < VESSEL_COUNT; index++) {
+					if (choice < counter[index]) {
+						BuildVessel = index;
+						break;
+					}
+					choice -= counter[index];
+				}
+			}
+		}
 	}
 
 	return(TICKS_PER_SECOND);
