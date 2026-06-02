@@ -5464,16 +5464,16 @@ bool HouseClass::AI_Raise_Power(UrgencyType urgency) const
 		StructType Structure;
 		UrgencyType Urgency;
 	} _types[] = {
-		{STRUCT_CHRONOSPHERE, URGENCY_LOW},
-		{STRUCT_SHIP_YARD, URGENCY_LOW},
-		{STRUCT_SUB_PEN, URGENCY_LOW},
-		{STRUCT_ADVANCED_TECH, URGENCY_LOW},
-		{STRUCT_FORWARD_COM, URGENCY_LOW},
-		{STRUCT_SOVIET_TECH, URGENCY_LOW},
+		{STRUCT_CHRONOSPHERE, URGENCY_MEDIUM},
+		{STRUCT_SHIP_YARD, URGENCY_HIGH},
+		{STRUCT_SUB_PEN, URGENCY_HIGH},
+		{STRUCT_ADVANCED_TECH, URGENCY_HIGH},
+		{STRUCT_FORWARD_COM, URGENCY_HIGH},
+		{STRUCT_SOVIET_TECH, URGENCY_HIGH},
 		{STRUCT_IRON_CURTAIN, URGENCY_MEDIUM},
 		{STRUCT_RADAR, URGENCY_MEDIUM},
 		{STRUCT_REPAIR, URGENCY_MEDIUM},
-		{STRUCT_TESLA, URGENCY_HIGH}
+		{STRUCT_TESLA, URGENCY_LOW}
 	};
 
 	/*
@@ -5520,18 +5520,18 @@ bool HouseClass::AI_Raise_Money(UrgencyType urgency) const
 		StructType	Structure;
 		UrgencyType	Urgency;
 	} _types[] = {
-		{STRUCT_CHRONOSPHERE, URGENCY_LOW},
-		{STRUCT_SHIP_YARD, URGENCY_LOW},
-		{STRUCT_SUB_PEN, URGENCY_LOW},
-		{STRUCT_ADVANCED_TECH, URGENCY_LOW},
-		{STRUCT_FORWARD_COM, URGENCY_LOW},
-		{STRUCT_SOVIET_TECH, URGENCY_LOW},
+		{STRUCT_CHRONOSPHERE, URGENCY_MEDIUM},
+		{STRUCT_SHIP_YARD, URGENCY_HIGH},
+		{STRUCT_SUB_PEN, URGENCY_HIGH},
+		{STRUCT_ADVANCED_TECH, URGENCY_HIGH},
+		{STRUCT_FORWARD_COM, URGENCY_HIGH},
+		{STRUCT_SOVIET_TECH, URGENCY_HIGH},
 		{STRUCT_STORAGE,URGENCY_LOW},
-		{STRUCT_REPAIR,URGENCY_LOW},
+		{STRUCT_REPAIR,URGENCY_MEDIUM},
 		{STRUCT_TESLA,URGENCY_MEDIUM},
 		{STRUCT_HELIPAD,URGENCY_MEDIUM},
-		{STRUCT_POWER,URGENCY_HIGH},
-		{STRUCT_AIRSTRIP,URGENCY_HIGH},
+		{STRUCT_POWER,URGENCY_MEDIUM},
+		{STRUCT_AIRSTRIP,URGENCY_MEDIUM},
 //		{STRUCT_WEAP,URGENCY_HIGH},
 //		{STRUCT_BARRACKS,URGENCY_HIGH},
 //		{STRUCT_TENT,URGENCY_HIGH},
@@ -5710,17 +5710,20 @@ int HouseClass::AI_Building(void)
 		**	money available.
 		*/
 		b = &BuildingTypeClass::As_Reference(STRUCT_ADVANCED_POWER);
-		if (Can_Build(b, ActLike) && Power <= Drain+Rule.PowerSurplus && b->Cost_Of() < money) {
+		if (BQuantity[STRUCT_REFINERY] == 0 && (BQuantity[STRUCT_POWER] + BQuantity[STRUCT_ADVANCED_POWER]) == 1) {
+			//do nothing, skip to refinery
+			//fix for bugged start @ $2500
+		} else if (Can_Build(b, ActLike) && Power <= Drain + Rule.PowerSurplus && b->Cost_Of() < money) {
 			choiceptr = BuildChoice.Alloc();
 			if (choiceptr != NULL) {
-				*choiceptr = BuildChoiceClass(BQuantity[STRUCT_REFINERY] == 0 ? URGENCY_LOW : URGENCY_MEDIUM, b->Type);
+				*choiceptr = BuildChoiceClass(URGENCY_HIGH, b->Type);
 			}
 		} else {
 			b = &BuildingTypeClass::As_Reference(STRUCT_POWER);
 			if (Can_Build(b, ActLike) && Power <= Drain+Rule.PowerSurplus && b->Cost_Of() < money) {
 				choiceptr = BuildChoice.Alloc();
 				if (choiceptr != NULL) {
-					*choiceptr = BuildChoiceClass(BQuantity[STRUCT_REFINERY] == 0 ? URGENCY_LOW : URGENCY_MEDIUM, b->Type);
+					*choiceptr = BuildChoiceClass(URGENCY_HIGH, b->Type);
 				}
 			}
 		}
@@ -5771,21 +5774,34 @@ int HouseClass::AI_Building(void)
 			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
 				choiceptr = BuildChoice.Alloc();
 				if (choiceptr != NULL) {
-					*choiceptr = BuildChoiceClass(URGENCY_MEDIUM, b->Type);
+					*choiceptr = BuildChoiceClass(URGENCY_LOW, b->Type);
 				}
 			}
 		}
 
-		/*
-		**	Try to build one gap generator.
-		*/
-		current = BQuantity[STRUCT_GAP];
-		if (current < 1 && Power_Fraction() >= 1 && hasincome) {
-			b = &BuildingTypeClass::As_Reference(STRUCT_GAP);
+		current = BQuantity[STRUCT_SHIP_YARD] + BQuantity[STRUCT_SUB_PEN];
+		if (current < Round_Up(Rule.WarRatio*fixed(CurBuildings)) && current < (unsigned)Rule.WarLimit && (money > 2000 || hasincome)) {
+			b = &BuildingTypeClass::As_Reference(STRUCT_SUB_PEN);
+
+			UrgencyType priority = URGENCY_LOW;
+			if (current < 1) {
+				priority++;
+			}
+			if (enemy != NULL && (unsigned)(enemy->BQuantity[STRUCT_SHIP_YARD] + enemy->BQuantity[STRUCT_SUB_PEN]) > (unsigned)current) {
+				priority++;
+			}
+
 			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
 				choiceptr = BuildChoice.Alloc();
 				if (choiceptr != NULL) {
-					*choiceptr = BuildChoiceClass(URGENCY_MEDIUM, b->Type);
+					*choiceptr = BuildChoiceClass(priority, b->Type);
+				}
+			}
+			b = &BuildingTypeClass::As_Reference(STRUCT_SHIP_YARD);
+			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
+				choiceptr = BuildChoice.Alloc();
+				if (choiceptr != NULL) {
+					*choiceptr = BuildChoiceClass(priority, b->Type);
 				}
 			}
 		}
@@ -5817,12 +5833,9 @@ int HouseClass::AI_Building(void)
 			}
 		}
 
-		/*
-		**	A helipad would be good.
-		*/
-		current = BQuantity[STRUCT_HELIPAD];
-		if (current < Round_Up(Rule.HelipadRatio*fixed(CurBuildings)) && current < (unsigned)Rule.HelipadLimit) {
-			b = &BuildingTypeClass::As_Reference(STRUCT_HELIPAD);
+		current = BQuantity[STRUCT_AIRSTRIP];
+		if (current < Round_Up(Rule.AirstripRatio*fixed(CurBuildings)) && current < (unsigned)Rule.AirstripLimit) {
+			b = &BuildingTypeClass::As_Reference(STRUCT_AIRSTRIP);
 			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
 				choiceptr = BuildChoice.Alloc();
 				if (choiceptr != NULL) {
@@ -5831,10 +5844,21 @@ int HouseClass::AI_Building(void)
 						threat_quantity = enemy->CurAircraft;
 					}
 
-					*choiceptr = BuildChoiceClass((CurAircraft < (unsigned)threat_quantity) ? URGENCY_HIGH : URGENCY_MEDIUM, b->Type);
+					//increases need for airstrip based on need for one
+					UrgencyType airstrippriority = URGENCY_LOW;
+					if (CurAircraft < (unsigned)threat_quantity) {
+						airstrippriority++;
+					}
+					if (current == 0) {
+						airstrippriority++;
+					}
+					*choiceptr = BuildChoiceClass(airstrippriority, b->Type);
+					//*choiceptr = BuildChoiceClass(airstrippriority, b->Type);
 				}
 			}
 		}
+
+		
 
 		/*
 		**	Always build up some base defense.
@@ -5849,11 +5873,22 @@ int HouseClass::AI_Building(void)
 				}
 			} else {
 				if (Percent_Chance(50)) {
-					b = &BuildingTypeClass::As_Reference(STRUCT_PILLBOX);
-					if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
-						choiceptr = BuildChoice.Alloc();
-						if (choiceptr != NULL) {
-							*choiceptr = BuildChoiceClass(URGENCY_MEDIUM, b->Type);
+					if (Percent_Chance(35)) {
+						b = &BuildingTypeClass::As_Reference(STRUCT_CAMOPILLBOX);
+						if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
+							choiceptr = BuildChoice.Alloc();
+							if (choiceptr != NULL) {
+								*choiceptr = BuildChoiceClass(URGENCY_MEDIUM, b->Type);
+							}
+						}
+					}
+					else {
+						b = &BuildingTypeClass::As_Reference(STRUCT_PILLBOX);
+						if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
+							choiceptr = BuildChoice.Alloc();
+							if (choiceptr != NULL) {
+								*choiceptr = BuildChoiceClass(URGENCY_MEDIUM, b->Type);
+							}
 						}
 					}
 				} else {
@@ -5864,6 +5899,61 @@ int HouseClass::AI_Building(void)
 							*choiceptr = BuildChoiceClass(URGENCY_MEDIUM, b->Type);
 						}
 					}
+				}
+			}
+		}
+
+		/*
+		**	Try to build one gap generator.
+		*/
+		current = BQuantity[STRUCT_GAP];
+		if (current < 2 && Power_Fraction() >= 1 && hasincome) {
+			b = &BuildingTypeClass::As_Reference(STRUCT_GAP);
+			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
+				choiceptr = BuildChoice.Alloc();
+
+				if (choiceptr != NULL) {
+					*choiceptr = BuildChoiceClass(URGENCY_LOW, b->Type);
+				}
+			}
+		}
+
+		/*
+		**	A helipad would be good.
+		*/
+		current = BQuantity[STRUCT_HELIPAD];
+		if (current < Round_Up(Rule.HelipadRatio*fixed(CurBuildings)) && current < (unsigned)Rule.HelipadLimit) {
+			b = &BuildingTypeClass::As_Reference(STRUCT_HELIPAD);
+			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
+				choiceptr = BuildChoice.Alloc();
+				if (choiceptr != NULL) {
+					int threat_quantity = 0;
+					if (enemy != NULL) {
+						threat_quantity = enemy->CurAircraft;
+					}
+
+					//increases need for airstrip based on need for one
+					UrgencyType helipriority = URGENCY_LOW;
+					if (CurAircraft < (unsigned)threat_quantity) {
+						helipriority++;
+					}
+					*choiceptr = BuildChoiceClass(helipriority, b->Type);
+
+					//*choiceptr = BuildChoiceClass((CurAircraft < (unsigned)threat_quantity) ? URGENCY_HIGH : URGENCY_MEDIUM, b->Type);
+				}
+			}
+		}
+
+		/*
+		**	Build a repair bay if there isn't one already available.
+		*/
+		current = BQuantity[STRUCT_REPAIR];
+		if (current == 0) {
+			b = &BuildingTypeClass::As_Reference(STRUCT_REPAIR);
+			if (Can_Build(b, ActLike) && b->Cost_Of() < money) {
+				choiceptr = BuildChoice.Alloc();
+				if (choiceptr) {
+					*choiceptr = BuildChoiceClass(URGENCY_LOW, b->Type);
 				}
 			}
 		}
@@ -5926,33 +6016,31 @@ int HouseClass::AI_Building(void)
 		}
 
 		/*
-		**	an Advanced base defense would be good.
+		**	more Advanced base defense would be good.
 		*/
 		current = BQuantity[STRUCT_TESLA];
-		if (current < 1) {
+		if (current < Round_Up(Rule.TeslaRatio*fixed(CurBuildings)) && current < (unsigned)Rule.TeslaLimit) {
 			b = &BuildingTypeClass::As_Reference(STRUCT_TESLA);
+
+			UrgencyType teslaPriority = URGENCY_LOW;
+
 			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome) && Power_Fraction() >= 1) {
 				choiceptr = BuildChoice.Alloc();
 				if (choiceptr != NULL) {
-					*choiceptr = BuildChoiceClass(URGENCY_MEDIUM, b->Type);
+					if (current == 0) {
+						teslaPriority = URGENCY_MEDIUM;
+					}
+					*choiceptr = BuildChoiceClass(teslaPriority, b->Type);
 				}
 			}
 		}
 
-		current = BQuantity[STRUCT_AIRSTRIP];
-		if (current < 1) {
-			b = &BuildingTypeClass::As_Reference(STRUCT_AIRSTRIP);
-			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
-				choiceptr = BuildChoice.Alloc();
-				if (choiceptr != NULL) {
-					int threat_quantity = 0;
-					if (enemy != NULL) {
-						threat_quantity = enemy->CurAircraft;
-					}
 
-					*choiceptr = BuildChoiceClass((CurAircraft < (unsigned)threat_quantity) ? URGENCY_HIGH : URGENCY_MEDIUM, b->Type);
-				}
-			}
+		//check if someone has nukes
+		UrgencyType superPriority = URGENCY_LOW;
+		if (enemy != NULL && enemy->BQuantity[STRUCT_CHRONOSPHERE] + enemy->BQuantity[STRUCT_IRON_CURTAIN] + enemy->BQuantity[STRUCT_MSLO] > 0) {
+			//if superweapons detected, priority jumps to HIGH
+			superPriority = URGENCY_HIGH;
 		}
 
 		/*
@@ -5977,54 +6065,47 @@ int HouseClass::AI_Building(void)
 			}
 		}
 
-		/*
-		**	more Advanced base defense would be good.
-		*/
-		current = BQuantity[STRUCT_TESLA];
-		if (current < Round_Up(Rule.TeslaRatio*fixed(CurBuildings)) && current < (unsigned)Rule.TeslaLimit) {
-			b = &BuildingTypeClass::As_Reference(STRUCT_TESLA);
+		//superweapons (may work???)
+
+		
+
+		//try chronosphere
+		current = BQuantity[STRUCT_CHRONOSPHERE];
+		if (current < 1) {
+			b = &BuildingTypeClass::As_Reference(STRUCT_CHRONOSPHERE);
 			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome) && Power_Fraction() >= 1) {
 				choiceptr = BuildChoice.Alloc();
-				if (choiceptr != NULL) {
-					*choiceptr = BuildChoiceClass(URGENCY_MEDIUM, b->Type);
+				if (choiceptr) {
+					*choiceptr = BuildChoiceClass(superPriority, b->Type);
+				}
+			}
+		}
+
+		//try iron curtain
+		current = BQuantity[STRUCT_IRON_CURTAIN];
+		if (current < 1) {
+			b = &BuildingTypeClass::As_Reference(STRUCT_IRON_CURTAIN);
+			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome) && Power_Fraction() >= 1) {
+				choiceptr = BuildChoice.Alloc();
+				if (choiceptr) {
+					*choiceptr = BuildChoiceClass(superPriority, b->Type);
+				}
+			}
+		}
+
+		//try missile silo
+		current = BQuantity[STRUCT_MSLO];
+		if (current < 1) {
+			b = &BuildingTypeClass::As_Reference(STRUCT_MSLO);
+			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome) && Power_Fraction() >= 1) {
+				choiceptr = BuildChoice.Alloc();
+				if (choiceptr) {
+					*choiceptr = BuildChoiceClass(superPriority, b->Type);
 				}
 			}
 		}
 
 		
-
-		/*
-		**	An airstrip would be good.
-		*/
-		current = BQuantity[STRUCT_AIRSTRIP];
-		if (current < Round_Up(Rule.AirstripRatio*fixed(CurBuildings)) && current < (unsigned)Rule.AirstripLimit) {
-			b = &BuildingTypeClass::As_Reference(STRUCT_AIRSTRIP);
-			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
-				choiceptr = BuildChoice.Alloc();
-				if (choiceptr != NULL) {
-					int threat_quantity = 0;
-					if (enemy != NULL) {
-						threat_quantity = enemy->CurAircraft;
-					}
-
-					*choiceptr = BuildChoiceClass((CurAircraft < (unsigned)threat_quantity) ? URGENCY_HIGH : URGENCY_MEDIUM, b->Type);
-				}
-			}
-		}
-
-		/*
-		**	Build a repair bay if there isn't one already available.
-		*/
-		current = BQuantity[STRUCT_REPAIR];
-		if (current == 0) {
-			b = &BuildingTypeClass::As_Reference(STRUCT_REPAIR);
-			if (Can_Build(b, ActLike) && b->Cost_Of() < money) {
-				choiceptr = BuildChoice.Alloc();
-				if (choiceptr) {
-					*choiceptr = BuildChoiceClass(URGENCY_MEDIUM, b->Type);
-				}
-			}
-		}
 
 		/*
 		**	Pick the choice that is the most urgent.
@@ -6522,31 +6603,33 @@ int HouseClass::AI_Aircraft(void)
 		if (CurAircraft >= Control.MaxAircraft) return(TICKS_PER_SECOND);
 
 		if (Can_Build(&AircraftTypeClass::As_Reference(AIRCRAFT_LONGBOW), ActLike) &&
-				 AircraftTypeClass::As_Reference(AIRCRAFT_LONGBOW).Level <= (unsigned)Control.TechLevel &&
-				 BQuantity[STRUCT_HELIPAD] > AQuantity[AIRCRAFT_LONGBOW] + AQuantity[AIRCRAFT_HIND]) {
+			AircraftTypeClass::As_Reference(AIRCRAFT_LONGBOW).Level <= (unsigned)Control.TechLevel &&
+			BQuantity[STRUCT_HELIPAD] > AQuantity[AIRCRAFT_LONGBOW] + AQuantity[AIRCRAFT_HIND]) {
 			BuildAircraft = AIRCRAFT_LONGBOW;
 			return(TICKS_PER_SECOND);
 		}
 
 		if (Can_Build(&AircraftTypeClass::As_Reference(AIRCRAFT_HIND), ActLike) &&
-				 AircraftTypeClass::As_Reference(AIRCRAFT_HIND).Level <= (unsigned)Control.TechLevel &&
-				 BQuantity[STRUCT_HELIPAD] > AQuantity[AIRCRAFT_LONGBOW] + AQuantity[AIRCRAFT_HIND]) {
+			AircraftTypeClass::As_Reference(AIRCRAFT_HIND).Level <= (unsigned)Control.TechLevel &&
+			BQuantity[STRUCT_HELIPAD] > AQuantity[AIRCRAFT_LONGBOW] + AQuantity[AIRCRAFT_HIND]) {
 			BuildAircraft = AIRCRAFT_HIND;
 			return(TICKS_PER_SECOND);
 		}
 
-		if (Can_Build(&AircraftTypeClass::As_Reference(AIRCRAFT_MIG), ActLike) &&
-				 AircraftTypeClass::As_Reference(AIRCRAFT_MIG).Level <= (unsigned)Control.TechLevel &&
-				 BQuantity[STRUCT_AIRSTRIP] > AQuantity[AIRCRAFT_MIG] + AQuantity[AIRCRAFT_YAK]) {
-			BuildAircraft = AIRCRAFT_MIG;
-			return(TICKS_PER_SECOND);
-		}
+		if (Percent_Chance(50)) {
+			if (Can_Build(&AircraftTypeClass::As_Reference(AIRCRAFT_MIG), ActLike) &&
+				AircraftTypeClass::As_Reference(AIRCRAFT_MIG).Level <= (unsigned)Control.TechLevel &&
+				BQuantity[STRUCT_AIRSTRIP] > AQuantity[AIRCRAFT_MIG] + AQuantity[AIRCRAFT_YAK]) {
+				BuildAircraft = AIRCRAFT_MIG;
+				return(TICKS_PER_SECOND);
+			}
 
-		if (Can_Build(&AircraftTypeClass::As_Reference(AIRCRAFT_YAK), ActLike) &&
-				 AircraftTypeClass::As_Reference(AIRCRAFT_YAK).Level <= (unsigned)Control.TechLevel &&
-				 BQuantity[STRUCT_AIRSTRIP] > AQuantity[AIRCRAFT_MIG] + AQuantity[AIRCRAFT_YAK]) {
-			BuildAircraft = AIRCRAFT_YAK;
-			return(TICKS_PER_SECOND);
+			if (Can_Build(&AircraftTypeClass::As_Reference(AIRCRAFT_YAK), ActLike) &&
+				AircraftTypeClass::As_Reference(AIRCRAFT_YAK).Level <= (unsigned)Control.TechLevel &&
+				BQuantity[STRUCT_AIRSTRIP] > AQuantity[AIRCRAFT_MIG] + AQuantity[AIRCRAFT_YAK]) {
+				BuildAircraft = AIRCRAFT_YAK;
+				return(TICKS_PER_SECOND);
+			}
 		}
 	}
 
