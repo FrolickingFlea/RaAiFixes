@@ -591,9 +591,9 @@ void VesselClass::AI(void)
 	assert(Vessels.ID(this) == ID);
 	assert(IsActive);
 
-	if (Mission == MISSION_NONE && MissionQueue == MISSION_NONE) {
+	/*if (Mission == MISSION_NONE && MissionQueue == MISSION_NONE) {
 		Enter_Idle_Mode();
-	}
+	}*/
 
 	/*
 	**	HACK ALERT:
@@ -644,6 +644,10 @@ void VesselClass::AI(void)
 	**	Handle body and turret rotation.
 	*/
 	Rotation_AI();
+
+	if (!IsTethered && !IsFiring && !IsDriving && !IsRotating && (Mission == MISSION_GUARD || Mission == MISSION_GUARD_AREA) && MissionQueue == MISSION_NONE && Map[Coord].Cell_Building() != NULL) {
+		Scatter(0, true, true);
+	}
 
 	/*
 	**	Handle any combat processing required.
@@ -2021,7 +2025,6 @@ int VesselClass::Mission_Retreat(void)
 	return(MissionControl[Mission].Normal_Delay());
 }
 
-
 /***********************************************************************************************
  * VesselClass::Is_Allowed_To_Recloak -- Can the vessel recloak now?                           *
  *                                                                                             *
@@ -2447,5 +2450,7 @@ BulletClass * VesselClass::Fire_At(TARGET target, int which)
 	}
 	return (NULL);
 }
+
+
 
 #endif
