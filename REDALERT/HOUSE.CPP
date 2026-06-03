@@ -2680,6 +2680,53 @@ void HouseClass::Special_Weapon_AI(SpecialWeaponType id)
 	}
 }
 
+//targets our own units. useful for support superweapons
+UnitClass* HouseClass::Special_Weapon_AI_SELF(SpecialWeaponType id)
+{
+	assert(Houses.ID(this) == ID);
+
+	/*
+	** Loop through all of the building objects on the map
+	** and see which ones are available.
+	*/
+	UnitClass * bestptr = NULL;
+	int best = -1;
+
+	for (int index = 0; index < Units.Count(); index++) {
+		UnitClass * b = Units.Ptr(index);
+
+		/*
+		** If the building is valid, not in limbo, not in the process of
+		** being destroyed and not our ally, then we can consider it.
+		*/
+		//also check if unit we're targeting is in hunt mode and ours
+		if (b != NULL && !b->IsInLimbo && b->Strength && b->House == this && b->Get_Mission = MISSION_HUNT) {
+			if (Percent_Chance(90) && (b->Value() > best || best == -1)) {
+				best = b->Value();
+				bestptr = b;
+			}
+		}
+	}
+
+	if (bestptr) {
+		CELL cell = Coord_Cell(bestptr->Center_Coord());
+		Place_Special_Blast(id, cell);
+	}
+
+	return bestptr;
+}
+
+//selects an empty cell near our target so our vehicle doesn't just die
+void HouseClass::Special_Weapon_AI_TPTO(SpecialWeaponType id, UnitClass * unit)
+{
+	assert(Houses.ID(this) == ID);
+
+	if (unit != NULL) {
+		CELL cell = Coord_Cell(unit->Target_Coord());
+		Place_Special_Blast(id, cell);
+	}
+}
+
 
 /***********************************************************************************************
  * HouseClass::Place_Special_Blast -- Place a special blast effect at location specified.      *
@@ -5320,6 +5367,17 @@ bool HouseClass::AI_Attack(UrgencyType )
 					u->ArchiveTarget = ::As_Target(Where_To_Go(u));
 				}
 			}
+		}
+	}
+	//iron curtain logic check. We're running on wave start so the AI doesn't waste it
+	if (SuperWeapon[SPC_IRON_CURTAIN].Is_Present() && SuperWeapon[SPC_IRON_CURTAIN].Is_Ready() && !IsHuman) {
+		Special_Weapon_AI_SELF(SPC_IRON_CURTAIN);
+	}
+	//same for 
+	if (SuperWeapon[SPC_CHRONOSPHERE].Is_Present() && SuperWeapon[SPC_CHRONOSPHERE].Is_Ready() && !IsHuman) {
+		UnitClass * target = Special_Weapon_AI_SELF(SPC_CHRONOSPHERE);
+		if (target != NULL) {
+			Special_Weapon_AI_TPTO(SPC_CHRONOSPHERE, target);
 		}
 	}
 	for (index = 0; index < Vessels.Count(); index++) {
