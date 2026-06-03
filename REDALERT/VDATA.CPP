@@ -240,7 +240,7 @@ VesselTypeClass::VesselTypeClass(
 	IsPieceOfEight(is_eight),
 	Type(type),
 	TurretOffset(toffset),
-	Mission(MISSION_GUARD),
+	Mission(MISSION_HUNT),
 	Explosion(exp),
 	MaxSize(0)
 {

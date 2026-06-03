@@ -1,7 +1,17 @@
 Red Alert AI Fixes
 
-This is a simple fix for RA1 REmastered AI to allow it to use the full 
-unit/structure roster (and possibly fix harvesters)
+This is a simple fix for RA1 Remastered AI to allow it to use the full 
+unit/structure roster (and possibly fix harvesters). The goal isn't to
+make the AI harder, but to give it access to all the game's content.
 
-fpr a more comprehensive overhaul, with QoL changes, see:
+for a more comprehensive overhaul, with QoL changes, see:
 https://steamcommunity.com/sharedfiles/filedetails/?id=2221741447
+
+
+
+If you want to edit this, feel free to download the source
+as a zip or make a fork. I'm not too picky about credit, so don't
+worry about that.
+
+source files should be usable out of the box on Windows 10/11 with 
+VS 2017 and its associated MFC and ATL extensions for the v140 Toolset
