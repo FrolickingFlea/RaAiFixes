@@ -14,4 +14,4 @@ as a zip or make a fork. I'm not too picky about credit, so don't
 worry about that.
 
 source files should be usable out of the box on Windows 10/11 with 
-VS 2017 and its assosciated MFC and ATL extensions for the v140 Toolset
+VS 2017 and its associated MFC and ATL extensions for the v140 Toolset

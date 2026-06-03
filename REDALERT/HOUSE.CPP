@@ -5322,6 +5322,25 @@ bool HouseClass::AI_Attack(UrgencyType )
 			}
 		}
 	}
+	for (index = 0; index < Vessels.Count(); index++) {
+		VesselClass * u = Vessels.Ptr(index);
+
+		if (u != NULL && !u->IsInLimbo && u->House == this && u->Strength > 0) {
+			if (!shuffle && u->Is_Weapon_Equipped() && (forced || Percent_Chance(75))) {
+				u->Assign_Mission(MISSION_HUNT);
+			}
+			else {
+
+				/*
+				**	If this unit is guarding the base, then cause it to shuffle
+				**	location instead.
+				*/
+				if (Percent_Chance(20) && u->Mission == MISSION_GUARD_AREA && Which_Zone(u) != ZONE_NONE) {
+					u->ArchiveTarget = ::As_Target(Where_To_Go(u));
+				}
+			}
+		}
+	}
 	for (index = 0; index < Infantry.Count(); index++) {
 		InfantryClass * i = Infantry.Ptr(index);
 
@@ -5787,7 +5806,7 @@ int HouseClass::AI_Building(void)
 			if (current < 1) {
 				priority++;
 			}
-			if (enemy != NULL && (unsigned)(enemy->BQuantity[STRUCT_SHIP_YARD] + enemy->BQuantity[STRUCT_SUB_PEN]) > (unsigned)current) {
+			if (enemy != NULL && (unsigned)(enemy->BQuantity[STRUCT_SHIP_YARD] + enemy->BQuantity[STRUCT_SUB_PEN] + enemy->BQuantity[STRUCT_FAKE_YARD]) > (unsigned)current) {
 				priority++;
 			}
 
@@ -5903,18 +5922,60 @@ int HouseClass::AI_Building(void)
 			}
 		}
 
+		//increase spawn chance for fakes and gaps if there's an allied tech center or airstrip
+		UrgencyType gapPriority = URGENCY_LOW;
+		UrgencyType fakePriority = URGENCY_LOW;
+		if (enemy->BQuantity[STRUCT_ADVANCED_TECH] + enemy->BQuantity[STRUCT_AIRSTRIP] > 0) {
+			fakePriority = URGENCY_MEDIUM;
+			//don't panic too much if we already have a gap gen
+			if (BQuantity[STRUCT_GAP] < 1) {
+				gapPriority = URGENCY_MEDIUM;
+			}
+		}
+
 		/*
-		**	Try to build one gap generator.
+		**	Try to build one (or two) gap generator.
 		*/
 		current = BQuantity[STRUCT_GAP];
-		if (current < 2 && Power_Fraction() >= 1 && hasincome) {
+		if (current < 2 && Power_Fraction() >= 1) {
 			b = &BuildingTypeClass::As_Reference(STRUCT_GAP);
 			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
 				choiceptr = BuildChoice.Alloc();
 
 				if (choiceptr != NULL) {
-					*choiceptr = BuildChoiceClass(URGENCY_LOW, b->Type);
+					*choiceptr = BuildChoiceClass(gapPriority, b->Type);
 				}
+			}
+		}
+
+
+
+		//pick random fake structure, so we don't overload the AI
+		StructType randomFake = STRUCT_FAKEWEAP;
+		if (Percent_Chance(50)) {
+			if (Percent_Chance(50)) {
+				randomFake = STRUCT_FAKECONST;
+			}
+			else {
+				randomFake = STRUCT_FAKE_YARD;
+			}
+		}
+		else {
+			if (Percent_Chance(50)) {
+				randomFake = STRUCT_FAKE_RADAR;
+			}
+		}
+
+		b = &BuildingTypeClass::As_Reference(randomFake);
+		if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
+			choiceptr = BuildChoice.Alloc();
+
+			if (choiceptr != NULL) {
+				//preference for 1 of each fake struct
+				if (BQuantity[randomFake] > 1) {
+					fakePriority = URGENCY_LOW;
+				}
+				*choiceptr = BuildChoiceClass(fakePriority, b->Type);
 			}
 		}
 
@@ -6037,10 +6098,12 @@ int HouseClass::AI_Building(void)
 
 
 		//check if someone has nukes
-		UrgencyType superPriority = URGENCY_LOW;
+		UrgencyType superPriority = URGENCY_MEDIUM;
+		UrgencyType techPriority = URGENCY_HIGH;
 		if (enemy != NULL && enemy->BQuantity[STRUCT_CHRONOSPHERE] + enemy->BQuantity[STRUCT_IRON_CURTAIN] + enemy->BQuantity[STRUCT_MSLO] > 0) {
-			//if superweapons detected, priority jumps to HIGH
-			superPriority = URGENCY_HIGH;
+			//if superweapons detected, priority jumps to CRITICAL
+			superPriority = URGENCY_CRITICAL;
+			techPriority = URGENCY_CRITICAL;
 		}
 
 		/*
@@ -6052,14 +6115,14 @@ int HouseClass::AI_Building(void)
 			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome) && Power_Fraction() >= 1) {
 				choiceptr = BuildChoice.Alloc();
 				if (choiceptr != NULL) {
-					*choiceptr = BuildChoiceClass(URGENCY_MEDIUM, b->Type);
+					*choiceptr = BuildChoiceClass(techPriority, b->Type);
 				}
 			} else {
 				b = &BuildingTypeClass::As_Reference(STRUCT_SOVIET_TECH);
 				if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome) && Power_Fraction() >= 1) {
 					choiceptr = BuildChoice.Alloc();
 					if (choiceptr != NULL) {
-						*choiceptr = BuildChoiceClass(URGENCY_MEDIUM, b->Type);
+						*choiceptr = BuildChoiceClass(techPriority, b->Type);
 					}
 				}
 			}
@@ -6152,7 +6215,7 @@ int HouseClass::AI_Unit(void)
 	**	A computer controlled house will try to build a replacement
 	**	harvester if possible.
 	*/
-	if (IQ >= Rule.IQHarvester && !IsTiberiumShort && !IsHuman && BQuantity[STRUCT_REFINERY] > UQuantity[UNIT_HARVESTER] && Difficulty != DIFF_HARD) {
+	if (IQ >= Rule.IQHarvester && !IsTiberiumShort && !IsHuman && BQuantity[STRUCT_REFINERY] * 1.5 > UQuantity[UNIT_HARVESTER] && Difficulty != DIFF_HARD) {
 		if (UnitTypeClass::As_Reference(UNIT_HARVESTER).Level <= (unsigned)Control.TechLevel) {
 			BuildUnit = UNIT_HARVESTER;
 			return(TICKS_PER_SECOND);
@@ -6279,10 +6342,17 @@ int HouseClass::AI_Vessel(void)
 	assert(Houses.ID(this) == ID);
 	if (BuildVessel != VESSEL_NONE) return(TICKS_PER_SECOND);
 
-	if (CurVessels >= Control.MaxVessel) {
+	HouseClass const * enemy = NULL;
+	if (Enemy != HOUSE_NONE) {
+		enemy = HouseClass::As_Pointer(Enemy);
+	}
+
+	//added check to limit putting ships in ponds
+	if (CurVessels >= Control.MaxVessel || (enemy != NULL && CurVessels > enemy->CurVessels * 3 && CurVessels > 2)) {
 		return(TICKS_PER_SECOND);
 	}
 
+	//campaign logic. multiplayer logic at bottom of method
 	if (Session.Type == GAME_NORMAL) {
 
 		int counter[VESSEL_COUNT];
@@ -6373,8 +6443,43 @@ int HouseClass::AI_Vessel(void)
 		}
 	}
 
+	//multiplayer logic
 	if (IsBaseBuilding) {
-		BuildVessel = VESSEL_NONE;
+		//
+		//quite an impressive implementation they had. shame to comment it out
+		//
+		//BuildVessel = VESSEL_NONE;
+
+		int counter[VESSEL_COUNT];
+		int total = 0;
+		VesselType index;
+		for (index = VESSEL_FIRST; index < VESSEL_COUNT; index++) {
+			VesselTypeClass const * utype = &VesselTypeClass::As_Reference(index);
+			//removing Transport spawns until proper AI for it can be worked out
+			if (Can_Build(utype, ActLike) && index != VESSEL_TRANSPORT) {
+				if (utype->PrimaryWeapon != NULL) {
+					counter[index] = 20;
+				}
+				else {
+					counter[index] = 1;
+				}
+			}
+			else {
+				counter[index] = 0;
+			}
+			total += counter[index];
+
+		}
+		if (total > 0) {
+			int choice = Random_Pick(0, total - 1);
+			for (index = VESSEL_FIRST; index < VESSEL_COUNT; index++) {
+				if (choice < counter[index]) {
+					BuildVessel = index;
+					break;
+				}
+				choice -= counter[index];
+			}
+		}
 	}
 
 	return(TICKS_PER_SECOND);
