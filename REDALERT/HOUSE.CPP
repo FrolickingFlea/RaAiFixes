@@ -5925,7 +5925,7 @@ int HouseClass::AI_Building(void)
 		//increase spawn chance for fakes and gaps if there's an allied tech center or airstrip
 		UrgencyType gapPriority = URGENCY_LOW;
 		UrgencyType fakePriority = URGENCY_LOW;
-		if (enemy->BQuantity[STRUCT_ADVANCED_TECH] + enemy->BQuantity[STRUCT_AIRSTRIP] > 0) {
+		if (enemy != NULL && enemy->BQuantity[STRUCT_ADVANCED_TECH] + enemy->BQuantity[STRUCT_AIRSTRIP] > 0) {
 			fakePriority = URGENCY_MEDIUM;
 			//don't panic too much if we already have a gap gen
 			if (BQuantity[STRUCT_GAP] < 1) {
@@ -6703,22 +6703,36 @@ int HouseClass::AI_Aircraft(void)
 {
 	assert(Houses.ID(this) == ID);
 
+
+	//using percentages to allow more aircraft types...
+	//
+	//side effect: teams with both helis will always prefer longbows
 	if (!IsHuman && IQ >= Rule.IQAircraft) {
 		if (BuildAircraft != AIRCRAFT_NONE) return(TICKS_PER_SECOND);
 		if (CurAircraft >= Control.MaxAircraft) return(TICKS_PER_SECOND);
 
 		if (Can_Build(&AircraftTypeClass::As_Reference(AIRCRAFT_LONGBOW), ActLike) &&
 			AircraftTypeClass::As_Reference(AIRCRAFT_LONGBOW).Level <= (unsigned)Control.TechLevel &&
-			BQuantity[STRUCT_HELIPAD] > AQuantity[AIRCRAFT_LONGBOW] + AQuantity[AIRCRAFT_HIND]) {
+			BQuantity[STRUCT_HELIPAD] > AQuantity[AIRCRAFT_LONGBOW] + AQuantity[AIRCRAFT_HIND] + AQuantity[AIRCRAFT_TRANSPORT]) {
 			BuildAircraft = AIRCRAFT_LONGBOW;
 			return(TICKS_PER_SECOND);
 		}
 
-		if (Can_Build(&AircraftTypeClass::As_Reference(AIRCRAFT_HIND), ActLike) &&
-			AircraftTypeClass::As_Reference(AIRCRAFT_HIND).Level <= (unsigned)Control.TechLevel &&
-			BQuantity[STRUCT_HELIPAD] > AQuantity[AIRCRAFT_LONGBOW] + AQuantity[AIRCRAFT_HIND]) {
-			BuildAircraft = AIRCRAFT_HIND;
-			return(TICKS_PER_SECOND);
+		if (Percent_Chance(20) && AQuantity[AIRCRAFT_TRANSPORT] < 1) {
+			if (Can_Build(&AircraftTypeClass::As_Reference(AIRCRAFT_TRANSPORT), ActLike) &&
+				AircraftTypeClass::As_Reference(AIRCRAFT_TRANSPORT).Level <= (unsigned)Control.TechLevel &&
+				BQuantity[STRUCT_HELIPAD] > AQuantity[AIRCRAFT_LONGBOW] + AQuantity[AIRCRAFT_HIND] + AQuantity[AIRCRAFT_TRANSPORT]) {
+				BuildAircraft = AIRCRAFT_TRANSPORT;
+				return(TICKS_PER_SECOND);
+			}
+		}
+		else {
+			if (Can_Build(&AircraftTypeClass::As_Reference(AIRCRAFT_HIND), ActLike) &&
+				AircraftTypeClass::As_Reference(AIRCRAFT_HIND).Level <= (unsigned)Control.TechLevel &&
+				BQuantity[STRUCT_HELIPAD] > AQuantity[AIRCRAFT_LONGBOW] + AQuantity[AIRCRAFT_HIND] + AQuantity[AIRCRAFT_TRANSPORT]) {
+				BuildAircraft = AIRCRAFT_HIND;
+				return(TICKS_PER_SECOND);
+			}
 		}
 
 		if (Percent_Chance(50)) {
@@ -6728,7 +6742,8 @@ int HouseClass::AI_Aircraft(void)
 				BuildAircraft = AIRCRAFT_MIG;
 				return(TICKS_PER_SECOND);
 			}
-
+		}
+		else {
 			if (Can_Build(&AircraftTypeClass::As_Reference(AIRCRAFT_YAK), ActLike) &&
 				AircraftTypeClass::As_Reference(AIRCRAFT_YAK).Level <= (unsigned)Control.TechLevel &&
 				BQuantity[STRUCT_AIRSTRIP] > AQuantity[AIRCRAFT_MIG] + AQuantity[AIRCRAFT_YAK]) {
