@@ -2700,7 +2700,7 @@ UnitClass* HouseClass::Special_Weapon_AI_SELF(SpecialWeaponType id)
 		** being destroyed and not our ally, then we can consider it.
 		*/
 		//also check if unit we're targeting is in hunt mode and ours
-		if (b != NULL && !b->IsInLimbo && b->Strength && b->House == this && b->Get_Mission = MISSION_HUNT) {
+		if (b != NULL && !b->IsInLimbo && b->Strength && b->House == this && b->Get_Mission() == MISSION_HUNT && b->Class->Type != UNIT_DEMOTRUCK && b->Class->Type != UNIT_CHRONOTANK && b->Class->Type != UNIT_MINELAYER) {
 			if (Percent_Chance(90) && (b->Value() > best || best == -1)) {
 				best = b->Value();
 				bestptr = b;
@@ -5373,11 +5373,11 @@ bool HouseClass::AI_Attack(UrgencyType )
 	if (SuperWeapon[SPC_IRON_CURTAIN].Is_Present() && SuperWeapon[SPC_IRON_CURTAIN].Is_Ready() && !IsHuman) {
 		Special_Weapon_AI_SELF(SPC_IRON_CURTAIN);
 	}
-	//same for 
+	//same for chronosphere
 	if (SuperWeapon[SPC_CHRONOSPHERE].Is_Present() && SuperWeapon[SPC_CHRONOSPHERE].Is_Ready() && !IsHuman) {
 		UnitClass * target = Special_Weapon_AI_SELF(SPC_CHRONOSPHERE);
 		if (target != NULL) {
-			Special_Weapon_AI_TPTO(SPC_CHRONOSPHERE, target);
+			Special_Weapon_AI(SPC_CHRONO2);
 		}
 	}
 	for (index = 0; index < Vessels.Count(); index++) {
@@ -6287,7 +6287,7 @@ int HouseClass::AI_Unit(void)
 	**	A computer controlled house will try to build a replacement
 	**	harvester if possible.
 	*/
-	if (IQ >= Rule.IQHarvester && !IsTiberiumShort && !IsHuman && BQuantity[STRUCT_REFINERY] * 1.5 > UQuantity[UNIT_HARVESTER] && Difficulty != DIFF_HARD) {
+	if (IQ >= Rule.IQHarvester && !IsTiberiumShort && !IsHuman && BQuantity[STRUCT_REFINERY] * 2 > UQuantity[UNIT_HARVESTER]/* && Difficulty != DIFF_HARD*/) {
 		if (UnitTypeClass::As_Reference(UNIT_HARVESTER).Level <= (unsigned)Control.TechLevel) {
 			BuildUnit = UNIT_HARVESTER;
 			return(TICKS_PER_SECOND);
