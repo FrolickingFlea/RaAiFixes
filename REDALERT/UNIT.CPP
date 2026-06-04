@@ -3117,23 +3117,7 @@ int UnitClass::Mission_Hunt(void)
 	} 
 	else {
 
-		int result = DriveClass::Mission_Hunt();
-
-		//check if 
-		if (*this == UNIT_CHRONOTANK && MoebiusCountDown) {
-
-
-			//paint self for chronosphere
-			//CELL cell = Coord_Cell(Center_Coord());
-			//House->Place_Special_Blast(SPC_CHRONOSPHERE, cell);
-			House->UnitToTeleport = *this;
-
-			//fire chronotank's chrono at a building
-			House->Special_Weapon_AI(SPC_CHRONO2);
-
-		}
-
-		return(result);
+		return(DriveClass::Mission_Hunt());
 	}
 	return(MissionControl[Mission].Normal_Delay()+Random_Pick(0, 2));
 }
