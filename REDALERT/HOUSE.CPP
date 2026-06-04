@@ -1543,6 +1543,13 @@ void HouseClass::Super_Weapon_Handler(void)
 				IsRecalcNeeded = true;
 			}
 		}
+		else {
+			//chronosphere logic. Should now fire first chance
+			if (SuperWeapon[SPC_CHRONOSPHERE].Is_Ready() && !IsHuman) {
+				Special_Weapon_AI_SELF(SPC_CHRONOSPHERE);
+				Special_Weapon_AI(SPC_CHRONO2);
+			}
+		}
 	} else {
 		/*
 		**	If there is no chronosphere present, but there is a chronosphere
@@ -5342,26 +5349,27 @@ bool HouseClass::AI_Attack(UrgencyType )
 	if (SuperWeapon[SPC_IRON_CURTAIN].Is_Present() && SuperWeapon[SPC_IRON_CURTAIN].Is_Ready() && !IsHuman) {
 		Special_Weapon_AI_SELF(SPC_IRON_CURTAIN);
 	}
-	//same for chronosphere
-	if (SuperWeapon[SPC_CHRONOSPHERE].Is_Present() && SuperWeapon[SPC_CHRONOSPHERE].Is_Ready() && !IsHuman) {
+	//same for chronosphere (moved to fire on ready)
+	/*if (SuperWeapon[SPC_CHRONOSPHERE].Is_Present() && SuperWeapon[SPC_CHRONOSPHERE].Is_Ready() && !IsHuman) {
 		Special_Weapon_AI_SELF(SPC_CHRONOSPHERE);
 		Special_Weapon_AI(SPC_CHRONO2);
-	}
+	}*/
 	for (index = 0; index < Units.Count(); index++) {
 		UnitClass * u = Units.Ptr(index);
 
 		if (u != NULL && !u->IsInLimbo && u->House == this && u->Strength > 0) {
 			//randomly add portion of units to attack... automatically adds if chronosphered or curtained
-			if ((!shuffle && u->Is_Weapon_Equipped() && (forced || Percent_Chance(75))) || u->MoebiusCountDown || u->IronCurtainCountDown) {
+			if ((!shuffle && u->Is_Weapon_Equipped() && (forced || Percent_Chance(75))) || u->IronCurtainCountDown) {
 
 				//chronotank logic, teleports if it can and desides to attack
 				if (u->Class->Type == UNIT_CHRONOTANK && !u->MoebiusCountDown) {
 
 
+
 					//paint self for chronosphere
 					//CELL cell = Coord_Cell(Center_Coord());
 					//House->Place_Special_Blast(SPC_CHRONOSPHERE, cell);
-					u->House->UnitToTeleport = *u;
+					u->House->UnitToTeleport = u->As_Target();
 
 					//fire chronotank's chrono at a building
 					u->House->Special_Weapon_AI(SPC_CHRONO2);
