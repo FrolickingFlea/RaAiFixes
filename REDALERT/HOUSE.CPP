@@ -1543,6 +1543,13 @@ void HouseClass::Super_Weapon_Handler(void)
 				IsRecalcNeeded = true;
 			}
 		}
+		else {
+			//chronosphere logic. Should now fire first chance
+			if (SuperWeapon[SPC_CHRONOSPHERE].Is_Ready() && !IsHuman) {
+				Special_Weapon_AI_SELF(SPC_CHRONOSPHERE);
+				Special_Weapon_AI(SPC_CHRONO2);
+			}
+		}
 	} else {
 		/*
 		**	If there is no chronosphere present, but there is a chronosphere
@@ -2667,6 +2674,40 @@ void HouseClass::Special_Weapon_AI(SpecialWeaponType id)
 		** being destroyed and not our ally, then we can consider it.
 		*/
 		if (b != NULL && !b->IsInLimbo && b->Strength && !Is_Ally(b)) {
+			if (Percent_Chance(90) && (b->Value() > best || best == -1)) {
+				best = b->Value();
+				bestptr = b;
+			}
+		}
+	}
+
+	if (bestptr) {
+		CELL cell = Coord_Cell(bestptr->Center_Coord());
+		Place_Special_Blast(id, cell);
+	}
+}
+
+//targets our own units. useful for support superweapons
+void HouseClass::Special_Weapon_AI_SELF(SpecialWeaponType id)
+{
+	assert(Houses.ID(this) == ID);
+
+	/*
+	** Loop through all of the building objects on the map
+	** and see which ones are available.
+	*/
+	UnitClass * bestptr = NULL;
+	int best = -1;
+
+	for (int index = 0; index < Units.Count(); index++) {
+		UnitClass * b = Units.Ptr(index);
+
+		/*
+		** If the building is valid, not in limbo, not in the process of
+		** being destroyed and not our ally, then we can consider it.
+		*/
+		//also check if unit we're targeting is in hunt mode and ours
+		if (b != NULL && !b->IsInLimbo && b->Strength && b->House == this && b->Class->Type != UNIT_DEMOTRUCK && b->Class->Type != UNIT_CHRONOTANK && b->Class->Type != UNIT_MINELAYER) {
 			if (Percent_Chance(90) && (b->Value() > best || best == -1)) {
 				best = b->Value();
 				bestptr = b;
@@ -5304,11 +5345,37 @@ bool HouseClass::AI_Attack(UrgencyType )
 			}
 		}
 	}
+	//iron curtain logic check. We're running on wave start so the AI doesn't waste it
+	if (SuperWeapon[SPC_IRON_CURTAIN].Is_Present() && SuperWeapon[SPC_IRON_CURTAIN].Is_Ready() && !IsHuman) {
+		Special_Weapon_AI_SELF(SPC_IRON_CURTAIN);
+	}
+	//same for chronosphere (moved to fire on ready)
+	/*if (SuperWeapon[SPC_CHRONOSPHERE].Is_Present() && SuperWeapon[SPC_CHRONOSPHERE].Is_Ready() && !IsHuman) {
+		Special_Weapon_AI_SELF(SPC_CHRONOSPHERE);
+		Special_Weapon_AI(SPC_CHRONO2);
+	}*/
 	for (index = 0; index < Units.Count(); index++) {
 		UnitClass * u = Units.Ptr(index);
 
 		if (u != NULL && !u->IsInLimbo && u->House == this && u->Strength > 0) {
-			if (!shuffle && u->Is_Weapon_Equipped() && (forced || Percent_Chance(75))) {
+			//randomly add portion of units to attack... automatically adds if chronosphered or curtained
+			if ((!shuffle && u->Is_Weapon_Equipped() && (forced || Percent_Chance(75))) || u->IronCurtainCountDown) {
+
+				//chronotank logic, teleports if it can and desides to attack
+				if (u->Class->Type == UNIT_CHRONOTANK && !u->MoebiusCountDown) {
+
+
+
+					//paint self for chronosphere
+					//CELL cell = Coord_Cell(Center_Coord());
+					//House->Place_Special_Blast(SPC_CHRONOSPHERE, cell);
+					u->House->UnitToTeleport = u->As_Target();
+
+					//fire chronotank's chrono at a building
+					u->House->Special_Weapon_AI(SPC_CHRONO2);
+
+				}
+
 				u->Assign_Mission(MISSION_HUNT);
 			} else {
 
@@ -6108,11 +6175,18 @@ int HouseClass::AI_Building(void)
 		//check if someone has nukes
 		UrgencyType superPriority = URGENCY_MEDIUM;
 		UrgencyType techPriority = URGENCY_HIGH;
-		if (enemy != NULL && enemy->BQuantity[STRUCT_CHRONOSPHERE] + enemy->BQuantity[STRUCT_IRON_CURTAIN] + enemy->BQuantity[STRUCT_MSLO] > 0) {
-			//if superweapons detected, priority jumps to CRITICAL
-			superPriority = URGENCY_CRITICAL;
-			techPriority = URGENCY_CRITICAL;
+		for (HousesType h = HOUSE_FIRST; h < HOUSE_COUNT; h++) {
+			HouseClass const * hptr = HouseClass::As_Pointer(h);
+
+			if (hptr != NULL && hptr->BQuantity[STRUCT_CHRONOSPHERE] + hptr->BQuantity[STRUCT_IRON_CURTAIN] + hptr->BQuantity[STRUCT_MSLO] > 0) {
+				//if superweapons detected, priority jumps to CRITICAL
+				superPriority = URGENCY_CRITICAL;
+				techPriority = URGENCY_CRITICAL;
+
+				break;
+			}
 		}
+		
 
 		/*
 		**	Build a tech center as soon as possible.
@@ -6229,7 +6303,7 @@ int HouseClass::AI_Unit(void)
 	**	A computer controlled house will try to build a replacement
 	**	harvester if possible.
 	*/
-	if (IQ >= Rule.IQHarvester && !IsTiberiumShort && !IsHuman && BQuantity[STRUCT_REFINERY] * 1.5 > UQuantity[UNIT_HARVESTER] && Difficulty != DIFF_HARD) {
+	if (IQ >= Rule.IQHarvester && !IsTiberiumShort && !IsHuman && BQuantity[STRUCT_REFINERY] * 2 > UQuantity[UNIT_HARVESTER]/* && Difficulty != DIFF_HARD*/) {
 		if (UnitTypeClass::As_Reference(UNIT_HARVESTER).Level <= (unsigned)Control.TechLevel) {
 			BuildUnit = UNIT_HARVESTER;
 			return(TICKS_PER_SECOND);

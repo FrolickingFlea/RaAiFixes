@@ -3114,7 +3114,8 @@ int UnitClass::Mission_Hunt(void)
 				}
 				break;
 		}
-	} else {
+	} 
+	else {
 
 		return(DriveClass::Mission_Hunt());
 	}
