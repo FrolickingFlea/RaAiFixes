@@ -5412,7 +5412,7 @@ bool HouseClass::AI_Attack(UrgencyType )
 		InfantryClass * i = Infantry.Ptr(index);
 
 		if (i != NULL && !i->IsInLimbo && i->House == this && i->Strength > 0) {
-			if (!shuffle && (i->Is_Weapon_Equipped() || *i == INFANTRY_RENOVATOR) && (forced || Percent_Chance(75))) {
+			if (!shuffle && (i->Is_Weapon_Equipped() || *i == INFANTRY_RENOVATOR || *i == INFANTRY_SPY || *i == INFANTRY_THIEF) && (forced || Percent_Chance(75))) {
 				i->Assign_Mission(MISSION_HUNT);
 			} else {
 
@@ -6721,20 +6721,47 @@ int HouseClass::AI_Infantry(void)
 							break;
 
 						case INFANTRY_E3:
-							typetrack[count].Value = 2;
+							typetrack[count].Value = 3;
 							break;
 
 						case INFANTRY_E4:
-							typetrack[count].Value = 5;
+							typetrack[count].Value = 2;
+							break;
+
+						case INFANTRY_SHOCK:
+							typetrack[count].Value = 1;
 							break;
 
 						case INFANTRY_RENOVATOR:
-							if (CurInfantry > 5) {
-								typetrack[count].Value = 1 - max(IQuantity[index], 0);
+							if (CurInfantry > 5 && IQuantity[index] < 5) {
+								typetrack[count].Value = 1;
 							}
 							break;
 
+						case INFANTRY_DOG:
+							if (CurInfantry > 5 && IQuantity[index] < 5) {
+								typetrack[count].Value = 1;
+							}
+							break;
+
+
 						case INFANTRY_TANYA:
+							typetrack[count].Value = 1 - max(IQuantity[index], 0);
+							break;
+
+						case INFANTRY_SPY:
+							typetrack[count].Value = 1 - max(IQuantity[index], 0);
+							break;
+
+						case INFANTRY_THIEF:
+							typetrack[count].Value = 1 - max(IQuantity[index], 0);
+							break;
+
+						case INFANTRY_MEDIC:
+							typetrack[count].Value = 1 - max(IQuantity[index], 0);
+							break;
+
+						case INFANTRY_MECHANIC:
 							typetrack[count].Value = 1 - max(IQuantity[index], 0);
 							break;
 
