@@ -2707,7 +2707,7 @@ void HouseClass::Special_Weapon_AI_SELF(SpecialWeaponType id)
 		** being destroyed and not our ally, then we can consider it.
 		*/
 		//also check if unit we're targeting is in hunt mode and ours
-		if (b != NULL && !b->IsInLimbo && b->Strength && b->House == this && b->Class->Type != UNIT_DEMOTRUCK && b->Class->Type != UNIT_CHRONOTANK && b->Class->Type != UNIT_MINELAYER) {
+		if (b != NULL && !b->IsInLimbo && b->Strength && b->House == this && b->Class->Type != UNIT_DEMOTRUCK && b->Class->Type != UNIT_CHRONOTANK && b->Class->Type != UNIT_MINELAYER && b->Class->Type != UNIT_HARVESTER) {
 			if (Percent_Chance(90) && (b->Value() > best || best == -1)) {
 				best = b->Value();
 				bestptr = b;
@@ -6158,13 +6158,13 @@ int HouseClass::AI_Building(void)
 		if (current < Round_Up(Rule.TeslaRatio*fixed(CurBuildings)) && current < (unsigned)Rule.TeslaLimit) {
 			b = &BuildingTypeClass::As_Reference(STRUCT_TESLA);
 
-			UrgencyType teslaPriority = URGENCY_LOW;
+			UrgencyType teslaPriority = URGENCY_MEDIUM;
 
 			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome) && Power_Fraction() >= 1) {
 				choiceptr = BuildChoice.Alloc();
 				if (choiceptr != NULL) {
 					if (current == 0) {
-						teslaPriority = URGENCY_MEDIUM;
+						teslaPriority = URGENCY_HIGH;
 					}
 					*choiceptr = BuildChoiceClass(teslaPriority, b->Type);
 				}
@@ -6762,7 +6762,10 @@ int HouseClass::AI_Infantry(void)
 							break;
 
 						case INFANTRY_MECHANIC:
-							typetrack[count].Value = 1 - max(IQuantity[index], 0);
+							//temporary limit on mechanic spawns
+							if (IQuantity[index] < 1) {
+								typetrack[count].Value = 1;
+							}
 							break;
 
 						default:
