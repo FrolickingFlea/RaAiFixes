@@ -1281,7 +1281,7 @@ void VesselClass::Init(void)
 TARGET VesselClass::Greatest_Threat(ThreatType threat) const
 {
 	if (*this == VESSEL_SS) {
-		threat = threat & ThreatType(THREAT_RANGE|THREAT_AREA);
+		//threat = threat & ThreatType(THREAT_RANGE|THREAT_AREA);
 		threat = threat | THREAT_BOATS;
 
 		//BG: get subs to attack buildings also.
@@ -1302,8 +1302,21 @@ TARGET VesselClass::Greatest_Threat(ThreatType threat) const
 
 		// Cruisers can never hit infantry anyway, so take 'em out of the list
 		// of possible targets.
+		//remove boats from cruiser targets to
 		if (*this == VESSEL_CA) {
 			threat = (ThreatType) (threat & (~THREAT_INFANTRY));
+			threat = (ThreatType)(threat & (~THREAT_BOATS));
+		}
+
+		//remove boats and add planes to missile sub targets
+		if (*this == VESSEL_MISSILESUB) {
+			threat = (ThreatType)(threat & (~THREAT_BOATS));
+			threat = threat | THREAT_AIR;
+		}
+
+		//force-add planes to DD targets
+		if (*this == VESSEL_DD) {
+			threat = threat | THREAT_AIR;
 		}
 	}
 #ifdef FIXIT_CARRIER	//	checked - ajw 9/28/98
