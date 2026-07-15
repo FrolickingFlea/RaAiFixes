@@ -3045,8 +3045,9 @@ bool HouseClass::Place_Special_Blast(SpecialWeaponType id, CELL cell)
 				/*
 				** Now set a percentage chance that a time quake will occur.
 				*/
-				if (!TimeQuake) {
-					TimeQuake = Percent_Chance(Rule.QuakeChance * 100);
+				if (Percent_Chance(Rule.QuakeChance * 100)) {
+					TimeQuake = true;
+					PendingTimeQuake = true;
 				}
 
 				/*
