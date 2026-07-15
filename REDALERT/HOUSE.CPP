@@ -3045,7 +3045,7 @@ bool HouseClass::Place_Special_Blast(SpecialWeaponType id, CELL cell)
 				/*
 				** Now set a percentage chance that a time quake will occur.
 				*/
-				if (Percent_Chance(Rule.QuakeChance * 100)) {
+				if (Percent_Chance(Rule.QuakeChance * 100) && tech && tech->IsActive && (tech->What_Am_I() != RTTI_UNIT || *(UnitClass *)tech != UNIT_CHRONOTANK)) {
 					TimeQuake = true;
 					PendingTimeQuake = true;
 				}
