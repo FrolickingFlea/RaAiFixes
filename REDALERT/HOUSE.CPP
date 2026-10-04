@@ -6164,7 +6164,8 @@ int HouseClass::AI_Building(void)
 			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome) && Power_Fraction() >= 1) {
 				choiceptr = BuildChoice.Alloc();
 				if (choiceptr != NULL) {
-					if (current == 0) {
+					//locked to always set urgency HIGH
+					if (current >= 0) {
 						teslaPriority = URGENCY_HIGH;
 					}
 					*choiceptr = BuildChoiceClass(teslaPriority, b->Type);
