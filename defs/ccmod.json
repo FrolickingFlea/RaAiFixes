@@ -3,7 +3,7 @@
 	"description": "Basic AI Fixes that allow AI players to access all game content",
 	"author": "FrolickingFlea",
 	"load_order": 1,
-	"version_low": 4,
+	"version_low": 5,
 	"version_high": 1,
 	"game_type": "RA"
 }

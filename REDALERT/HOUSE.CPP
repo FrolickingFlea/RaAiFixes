@@ -5995,6 +5995,19 @@ int HouseClass::AI_Building(void)
 			}
 		}
 
+		current = BQuantity[STRUCT_TESLA];
+		if (current < Round_Up(Rule.TeslaRatio*fixed(CurBuildings)) && current < (unsigned)Rule.TeslaLimit) {
+			b = &BuildingTypeClass::As_Reference(STRUCT_TESLA);
+
+			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome) && Power_Fraction() >= 1) {
+				choiceptr = BuildChoice.Alloc();
+				if (choiceptr != NULL) {
+					*choiceptr = BuildChoiceClass(URGENCY_HIGH, b->Type);
+				}
+			}
+		}
+
+
 		//increase spawn chance for fakes and gaps if there's an allied tech center or airstrip
 		UrgencyType gapPriority = URGENCY_LOW;
 		UrgencyType fakePriority = URGENCY_NONE;
@@ -6010,7 +6023,7 @@ int HouseClass::AI_Building(void)
 		**	Try to build one (or two) gap generator.
 		*/
 		current = BQuantity[STRUCT_GAP];
-		if (current < 2 && Power_Fraction() >= 1) {
+		if (current < 3 && Power_Fraction() >= 1) {
 			b = &BuildingTypeClass::As_Reference(STRUCT_GAP);
 			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
 				choiceptr = BuildChoice.Alloc();
@@ -6155,23 +6168,7 @@ int HouseClass::AI_Building(void)
 		/*
 		**	more Advanced base defense would be good.
 		*/
-		current = BQuantity[STRUCT_TESLA];
-		if (current < Round_Up(Rule.TeslaRatio*fixed(CurBuildings)) && current < (unsigned)Rule.TeslaLimit) {
-			b = &BuildingTypeClass::As_Reference(STRUCT_TESLA);
-
-			UrgencyType teslaPriority = URGENCY_MEDIUM;
-
-			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome) && Power_Fraction() >= 1) {
-				choiceptr = BuildChoice.Alloc();
-				if (choiceptr != NULL) {
-					//locked to always set urgency HIGH
-					if (current >= 0) {
-						teslaPriority = URGENCY_HIGH;
-					}
-					*choiceptr = BuildChoiceClass(teslaPriority, b->Type);
-				}
-			}
-		}
+		//moved to defense weapon if chain
 
 
 		//check if someone has nukes
